@@ -1,0 +1,126 @@
+---
+title: "Proteomics Assignment"
+author: "Benjamin Wölfl (support: TJ Clement)"
+date: "May 1, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyr)
+library(ibb)
+library(gplots)
+```
+
+## Loading the source data set for questions 1.*
+```{r}
+f <- file.path('source.data', 'maldi-spectrum.tsv')
+X <- read.delim(f, header = TRUE, sep = '\t')
+```
+
+## Question 1.1
+```{r}
+plot(X$intensity~X$m.z, main = 'Intensities of the full mass spectrum', xlab = 'm/z [ ]', ylab = 'Intensity [ ]', frame.plot = TRUE, las = 2, type = 'l')
+```
+
+## Question 1.2
+```{r}
+molecular.mass <- 80 * 12 + 128 * 1.007825032241 + 24 * 14.0030740048 + 22 * 15.99491461956 + 1 # 1 for proton
+print(paste('Expected:', round(molecular.mass, 2)))
+X.isotopes <- X %>%
+              filter(m.z >= 1775 & m.z <= 1785)
+plot(X.isotopes$intensity~X.isotopes$m.z, pch = 'x', main = 'Close-up on the intensities for the full mass spectrum', sub = 'The first 5 C-isotopes.', type = 'l', xlab = 'm/z [ ]', ylab = 'Intensity [ ]', lwd = 2)
+abline(v = molecular.mass, lty = 2, col = 'black')
+abline(v = (molecular.mass-(12-13.0033548378)*1), lty = 2, col = 'black')
+abline(v = (molecular.mass-(12-13.0033548378)*2), lty = 2, col = 'black')
+abline(v = (molecular.mass-(12-13.0033548378)*3), lty = 2, col = 'black')
+abline(v = (molecular.mass-(12-13.0033548378)*4), lty = 2, col = 'black')
+```
+
+# Question 1.3
+```{r}
+par(mfrow = c(1, 2))
+barplot(dbinom(0:4, size = 80, prob = 0.011), main = 'Binomial distribution', names.arg = c('Pure C12', 'With 1 C13', 'With 2 C13', 'With 3 C13', 'With 4 C13'), ylab = 'Probability [ ]', las = 2) #  sub = 'p(C13) = 0.011, 80 trials'
+barplot(dbinom(0:4, size = 80, prob = 0.011) / dbinom(0, size = 80, prob = 0.011), main = 'Relative intensities', names.arg = c('Pure C12', 'With 1 C13', 'With 2 C13', 'With 3 C13', 'With 4 C13'), ylab = 'Relative intensity (div. by pure C12) [ ]', las = 2)
+```
+
+```{r}
+par(mfrow = c(1, 2))
+barplot(dbinom(0:4, size = 80, prob = 0.011) / dbinom(0, size = 80, prob = 0.011), main = 'Rel. intensities (C-isot.)', names.arg = c('Pure C12', 'With 1 C13', 'With 2 C13', 'With 3 C13', 'With 4 C13'), las = 2, ylab = 'Relative intensity')
+X.isotopes <- X %>%
+              filter(m.z >= 1775 & m.z <= 1785)
+plot(X.isotopes$intensity~X.isotopes$m.z, pch = 'x', main = 'Mass spectrum', sub = 'The first 5 C-isotopes.', type = 'l', xlab = 'm/z [ ]', ylab = 'Intensity [ ]', lwd = 2)
+abline(v = molecular.mass, lty = 2, col = 'black')
+abline(v = (molecular.mass-(12-13.0033548378)*1), lty = 2, col = 'black')
+abline(v = (molecular.mass-(12-13.0033548378)*2), lty = 2, col = 'black')
+abline(v = (molecular.mass-(12-13.0033548378)*3), lty = 2, col = 'black')
+abline(v = (molecular.mass-(12-13.0033548378)*4), lty = 2, col = 'black')
+```
+
+## Loading the source data set for questions 2.*
+```{r}
+f <- file.path('source.data', 'example-3groups.txt')
+X.2 <- read.delim(f, header = TRUE, sep = '\t')
+```
+
+## Question 2.1
+```{r, include = FALSE}
+pdf('q_2.1.pdf', width = 9, height = 6)
+heatmap.2(t(as.matrix(X.2)), col=topo.colors(50), key=TRUE, keysize=1, cexRow=1, labCol=NA, scale='none', symkey=FALSE, density.info="none", trace='none', xlab = 'Protein IDs', ylab = 'Sample IDs')
+dev.off()
+```
+
+## Question 2.2
+```{r, include = FALSE}
+normalize <- function(a_matrix){
+  # normalized a matrix by column and by row
+  col.sums <- colSums(a_matrix)
+  req.col.sum <- sum(col.sums) / ncol(a_matrix)
+  a_matrix.colnorm <- a_matrix / col.sums * req.col.sum
+  row.means <- rowMeans(a_matrix.colnorm)
+  row.sds <- apply(a_matrix.colnorm, 1, sd)
+  return(t(t((a_matrix.colnorm - row.means) / row.sds)))
+}
+X.2.normalized <- normalize(X.2)
+pdf('q_2.2.pdf', width = 9, height = 6)
+heatmap.2(t(as.matrix(X.2.normalized)), col=topo.colors(50), key=TRUE, keysize=1, cexRow=1, labCol=NA, scale='none', symkey=FALSE, density.info="none", trace='none', xlab = 'Protein IDs', ylab = 'Sample IDs')
+dev.off()
+```
+
+## Question 2.3
+The authors state, that the method is applicable for spectral counts in label-free mass spectrometry-based proteomics (https://doi-org.vu-nl.idm.oclc.org/10.1093/bioinformatics/btp677).
+
+## Question 2.4
+```{r, include = FALSE}
+bb.test.output <- bb.test(X.2[, 1:8], colSums(X.2[, 1:8]),
+    c("a","a","a", "b","b","b", "c","c"), n.threads = -1)
+```
+
+```{r, include = FALSE}
+X.2.reduced.normalized <- normalize(X.2[unlist(bb.test.output)<0.01,])
+pdf('q_2.4.pdf', width = 9, height = 6)
+heatmap.2(t(as.matrix(X.2.reduced.normalized)), col=topo.colors(50), key=TRUE, keysize=1, cexRow=1, labCol=NA, scale='none', symkey=FALSE, density.info="none", trace='none', xlab = 'Protein IDs', ylab = 'Sample IDs')
+dev.off()
+```
+
+## Extra sausage: Theoretical mass spectrogram for peptide ion [C80H128N24O22H]+
+```{r}
+draw_peptide_mass <- function(){
+  # Gives the mass of a randomly drawn C80H128N24O22 peptide taking into consideraton natural isotope abundancies.
+  # P(C12)=98.9/100, P(C13)=1.1/100
+  # P(H1)=99.9885/100, P(H2)=0.0115/100
+  # P(N14)=99.634/100, P(N15)=0.366/100
+  # P(O16)=99.762/100, P(O17)=0.038/100, P(O18)=0.2/100
+  cs <- replicate(80, ifelse(runif(1)<98.9/100, 12, 13.0033548378))
+  hs <- replicate(128, ifelse(runif(1)<99.9885/100, 1.007825032241, 2.01410177811))
+  ns <- replicate(24, ifelse(runif(1)<99.634/100, 14.0030740048, 15.0001088982))
+  os <- replicate(22, ifelse(runif(1)<99.762/100, 15.99491461956, ifelse(runif(1)<(0.038/ (0.038 + 0.2)), 16.99913170, 17.9991610)))
+  return(sum(cs)+sum(hs)+sum(ns)+sum(os)+1) # with unit-protonation
+}
+n <- 100000
+plot(density(replicate(n, draw_peptide_mass())), main = 'Theoretical mass spectrogram', xlab = 'm/z [ ]', ylab = 'Intensity [ ]')
+```
+
+
+

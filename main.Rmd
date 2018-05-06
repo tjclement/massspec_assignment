@@ -31,30 +31,35 @@ molecular.mass <- 80 * 12 + 128 * 1.007825032241 + 24 * 14.0030740048 + 22 * 15.
 print(paste('Expected:', round(molecular.mass, 2)))
 X.isotopes <- X %>%
               filter(m.z >= 1775 & m.z <= 1785)
-plot(X.isotopes$intensity~X.isotopes$m.z, pch = 'x', main = 'Close-up on the intensities for the full mass spectrum', sub = 'The first 5 C-isotopes.', type = 'l', xlab = 'm/z [ ]', ylab = 'Intensity [ ]', lwd = 2)
+plot(X.isotopes$intensity~X.isotopes$m.z, pch = 'x', main = 'Close-up on the intensities for the full mass spectrum', sub = 'The first 5 isotopes.', type = 'l', xlab = 'm/z [ ]', ylab = 'Intensity [ ]', lwd = 2)
 abline(v = molecular.mass, lty = 2, col = 'black')
 abline(v = (molecular.mass-(12-13.0033548378)*1), lty = 2, col = 'black')
 abline(v = (molecular.mass-(12-13.0033548378)*2), lty = 2, col = 'black')
 abline(v = (molecular.mass-(12-13.0033548378)*3), lty = 2, col = 'black')
 abline(v = (molecular.mass-(12-13.0033548378)*4), lty = 2, col = 'black')
 
-draw_peptide_mass <- function(){
+draw_peptide_mass <- function(all.isotopes=TRUE){
   # Gives the mass of a randomly drawn C80H128N24O22 peptide taking into consideraton natural isotope abundancies.
   # P(C12)=98.9/100, P(C13)=1.1/100
   # P(H1)=99.9885/100, P(H2)=0.0115/100
   # P(N14)=99.634/100, P(N15)=0.366/100
   # P(O16)=99.762/100, P(O17)=0.038/100, P(O18)=0.2/100
   cs <- replicate(80, ifelse(runif(1)<98.9/100, 12, 13.0033548378))
-  hs <- replicate(128, ifelse(runif(1)<99.9885/100, 1.007825032241, 2.01410177811))
-  ns <- replicate(24, ifelse(runif(1)<99.634/100, 14.0030740048, 15.0001088982))
-  os <- replicate(22, ifelse(runif(1)<99.762/100, 15.99491461956, ifelse(runif(1)<(0.038/ (0.038 + 0.2)), 16.99913170, 17.9991610)))
+  hs <- replicate(128, ifelse(!all.isotopes || runif(1)<99.9885/100, 1.007825032241, 2.01410177811))
+  ns <- replicate(24, ifelse(!all.isotopes || runif(1)<99.634/100, 14.0030740048, 15.0001088982))
+  os <- replicate(22, ifelse(!all.isotopes || runif(1)<99.762/100, 15.99491461956, ifelse(runif(1)<(0.038/ (0.038 + 0.2)), 16.99913170, 17.9991610)))
   return(sum(cs)+sum(hs)+sum(ns)+sum(os)+1) # with unit-protonation
 }
 n <- 50000
 density <- density(replicate(n, draw_peptide_mass()))
-density$y <- density$y * 800 + 80
-lines(density, main = 'Theoretical mass spectrogram', xlab = 'm/z [ ]', col = 'red', lwd = 2)
-legend(1783, 1000, legend = c('observed', 'theoretical'), col = c('black', 'red'), pch = 1)
+density$y <- (density$y / max(density$y) * (max(X.isotopes$intensity) - min(X.isotopes$intensity))) + min(X.isotopes$intensity)
+lines(density, main = 'Theoretical full mass spectrogram', xlab = 'm/z [ ]', col = 'red', lwd = 2)
+
+density <- density(replicate(n, draw_peptide_mass(all.isotopes = FALSE)))
+density$y <- (density$y / max(density$y) * (max(X.isotopes$intensity) - min(X.isotopes$intensity))) + min(X.isotopes$intensity)
+lines(density, main = 'Theoretical partial mass spectrogram', xlab = 'm/z [ ]', col = 'purple', lwd = 2)
+
+legend(1782.25, 1000, legend = c('observed', 'theoretical', 'theoretical partial'), col = c('black', 'red', 'purple'), pch = 1)
 #dev.off()
 ```
 
@@ -141,6 +146,3 @@ draw_peptide_mass <- function(){
 n <- 10000
 plot(density(replicate(n, draw_peptide_mass())), main = 'Theoretical mass spectrogram', xlab = 'm/z [ ]', ylab = 'Intensity [ ]')
 ```
-
-
-
